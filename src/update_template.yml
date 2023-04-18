@@ -1,0 +1,82 @@
+- name: Playbook to update Windows template(s) in vmware
+  hosts: localhost
+  gather_facts: no
+  vars_files:
+    - vars/vars.yml
+  
+  tasks:
+
+    - name: Convert Template "{{ vm_template_name }}" to VM
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        datacenter: "{{ vcenter_datacenter }}"
+        validate_certs: no
+        name: "{{ template_name }}"
+        is_template: no
+      when: template_name is defined
+
+    - name: Power on VM "{{ template_name }}"
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        datacenter: "{{ vcenter_datacenter }}"
+        validate_certs: no
+        name: "{{ template_name }}"
+        state: poweredon
+        wait_for_ip_address: yes
+      when: template_name is defined
+      register: vm_output
+
+    - name: Wait for VM to settle
+      pause:
+        seconds: 30
+
+    - name: Upgrade VM Tools on "{{ template_name }}"
+      community.vmware.vmware_guest_tools_upgrade:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        datacenter: "{{ vcenter_datacenter }}"
+        validate_certs: no
+        name: "{{ template_name }}"
+    
+    - name: Add the host to upgrade
+      add_host:
+        name: "{{ vm_output.instance.hw_name }}"
+        ansible_connection: winrm
+        ansible_port: 5986
+        ansible_host: "{{ vm_output.instance.ipv4 }}"
+        ansible_user: "{{ windows_user }}"
+        ansible_password: "{{ windows_user_password }}"
+      no_log: true 
+
+    - name: Run the Windows update task
+      include: tasks/win-updates.yml
+      delegate_to: "{{ vm_output.instance.hw_name }}"
+
+    - name: Power Windows Server off
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        datacenter: "{{ vcenter_datacenter }}"
+        validate_certs: no
+        name: "{{ template_name }}"
+        state: shutdownguest
+        state_change_timeout: 300
+      when: template_name is defined
+      register: shutdown
+    
+    - name: Convert VM "{{ template_name }}" to Template
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        datacenter: "{{ vcenter_datacenter }}"
+        validate_certs: no
+        name: "{{ template_name }}"
+        is_template: yes
+      when: template_name is defined      
