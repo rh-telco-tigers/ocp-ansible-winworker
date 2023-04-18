@@ -30,9 +30,16 @@
       when: template_name is defined
       register: vm_output
 
-    - name: Wait for VM to settle
-      pause:
-        seconds: 30
+    - name: Wait for VMware tools to become available by name
+      community.vmware.vmware_guest_tools_wait:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+        name: "{{ template_name }}"
+      delegate_to: localhost
+      register: vm_facts
+
 
     - name: Upgrade VM Tools on "{{ template_name }}"
       community.vmware.vmware_guest_tools_upgrade:
@@ -45,17 +52,17 @@
     
     - name: Add the host to upgrade
       add_host:
-        name: "{{ vm_output.instance.hw_name }}"
+        name: "{{ vm_facts.instance.hw_name }}"
         ansible_connection: winrm
-        ansible_port: 5986
-        ansible_host: "{{ vm_output.instance.ipv4 }}"
+        ansible_port: 5985
+        ansible_host: "{{ vm_facts.instance.ipv4 }}"
         ansible_user: "{{ windows_user }}"
         ansible_password: "{{ windows_user_password }}"
       no_log: true 
 
     - name: Run the Windows update task
       include: tasks/win-updates.yml
-      delegate_to: "{{ vm_output.instance.hw_name }}"
+      delegate_to: "{{ vm_facts.instance.hw_name }}"
 
     - name: Power Windows Server off
       community.vmware.vmware_guest:
