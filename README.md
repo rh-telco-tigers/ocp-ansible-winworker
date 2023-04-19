@@ -27,4 +27,4 @@ You can also use ssh, and for our purposes this seems to work better. If you are
 2. edit the `vars/vars.yml` file with your information
 3. run `podman build -t ocp-ansible-windows .` to build your container
 4. run `podman run -it ocp-ansible-windows:latest /bin/bash` to run the container
-5. run `ansible-playbook update_template.yml -e "vm_template_name=<template_name>" -vvvv`
+5. run `ansible-playbook update_template.yml -e "vm_template_name=<template_name>"`

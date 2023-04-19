@@ -14,9 +14,13 @@ RUN pip3 install --upgrade pip && \
     pip3 install kubernetes && \
     python3 -m pip install ansible
 
-RUN mkdir /ansible
-COPY src/ /ansible
+RUN mkdir /ansible && \
+    mkdir /root/.kube
 
+COPY src/requirements.yml /ansible
 WORKDIR /ansible 
-
 RUN ansible-galaxy collection install -r /ansible/requirements.yml
+
+COPY src/ /ansible
+COPY config /root/.kube
+

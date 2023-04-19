@@ -1,0 +1,22 @@
+---
+#patch-node.yml
+
+- name: Mark node "{{ item[0].address }}" as unschedulable.
+  kubernetes.core.k8s_drain:
+    state: cordon
+    name: "{{ item[0].address }}"
+
+- name: Drain node "{{ item[0].address }}"
+  kubernetes.core.k8s_drain:
+    state: drain
+    name: "{{ item[0].address }}"
+    delete_options:
+      force: yes
+
+# A set of task needs to go here to run the patching cycle, then reboot node and wait for node to be back on line
+
+- name: Mark node "{{ item[0].address }}" as schedulable.
+  kubernetes.core.k8s_drain:
+    state: uncordon
+    name: "{{ item[0].address }}"
+   

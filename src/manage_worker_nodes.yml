@@ -1,0 +1,27 @@
+- name: Create dynamic inventory of Windows nodes
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Get Kubernetes nodes
+      kubernetes.core.k8s_info:
+        kind: Node
+        label_selectors: "kubernetes.io/os=windows"
+      register: my_nodes
+    - name: Add host to inventory
+      add_host:
+        hostname: "{{ item[0].address }}"
+        groups: "winnodes"
+      loop: "{{ my_nodes | json_query(query) }}"
+      vars:
+        query: "resources[].status.addresses[?type=='ExternalIP']"
+
+- name: Manipulate Windows Nodes
+  hosts: localhost
+  gather_facts: False
+  tasks:
+
+    - name: Drain and Cordon
+      include_tasks: tasks/patch-node.yml
+      loop: "{{ my_nodes | json_query(query) }}"
+      vars:
+        query: "resources[].status.addresses[?type=='Hostname']" 
