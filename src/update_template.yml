@@ -13,51 +13,54 @@
         password: "{{ vcenter_password }}"
         datacenter: "{{ vcenter_datacenter }}"
         validate_certs: no
-        name: "{{ template_name }}"
+        name: "{{ vm_template_name }}"
         is_template: no
-      when: template_name is defined
+      when: vm_template_name is defined
 
-    - name: Power on VM "{{ template_name }}"
+    - name: Power on VM "{{ vm_template_name }}"
       community.vmware.vmware_guest:
         hostname: "{{ vcenter_hostname }}"
         username: "{{ vcenter_username }}"
         password: "{{ vcenter_password }}"
         datacenter: "{{ vcenter_datacenter }}"
         validate_certs: no
-        name: "{{ template_name }}"
+        name: "{{ vm_template_name }}"
         state: poweredon
         wait_for_ip_address: yes
-      when: template_name is defined
+      when: vm_template_name is defined
       register: vm_output
 
-    - name: Wait for VMware tools to become available by name
+    - name: Wait for VMware tools to become available
       community.vmware.vmware_guest_tools_wait:
         hostname: "{{ vcenter_hostname }}"
         username: "{{ vcenter_username }}"
         password: "{{ vcenter_password }}"
         validate_certs: no
-        name: "{{ template_name }}"
+        name: "{{ vm_template_name }}"
       delegate_to: localhost
       register: vm_facts
 
 
-    - name: Upgrade VM Tools on "{{ template_name }}"
+    - name: Upgrade VM Tools on "{{ vm_template_name }}"
       community.vmware.vmware_guest_tools_upgrade:
         hostname: "{{ vcenter_hostname }}"
         username: "{{ vcenter_username }}"
         password: "{{ vcenter_password }}"
         datacenter: "{{ vcenter_datacenter }}"
         validate_certs: no
-        name: "{{ template_name }}"
+        name: "{{ vm_template_name }}"
     
     - name: Add the host to upgrade
       add_host:
         name: "{{ vm_facts.instance.hw_name }}"
-        ansible_connection: winrm
-        ansible_port: 5985
         ansible_host: "{{ vm_facts.instance.ipv4 }}"
         ansible_user: "{{ windows_user }}"
-        ansible_password: "{{ windows_user_password }}"
+        ansible_ssh_private_key_file: "/ansible/private_key.pem"
+        ansible_ssh_extra_args: "-o StrictHostKeyChecking=no"
+        ansible_shell_type: cmd
+        ansible_become_method: runas
+        ansible_remote_tmp: c\temp
+        remote_tmp: c\temp
       no_log: true 
 
     - name: Run the Windows update task
@@ -71,19 +74,19 @@
         password: "{{ vcenter_password }}"
         datacenter: "{{ vcenter_datacenter }}"
         validate_certs: no
-        name: "{{ template_name }}"
+        name: "{{ vm_template_name }}"
         state: shutdownguest
         state_change_timeout: 300
-      when: template_name is defined
+      when: vm_template_name is defined
       register: shutdown
     
-    - name: Convert VM "{{ template_name }}" to Template
+    - name: Convert VM "{{ vm_template_name }}" to Template
       community.vmware.vmware_guest:
         hostname: "{{ vcenter_hostname }}"
         username: "{{ vcenter_username }}"
         password: "{{ vcenter_password }}"
         datacenter: "{{ vcenter_datacenter }}"
         validate_certs: no
-        name: "{{ template_name }}"
+        name: "{{ vm_template_name }}"
         is_template: yes
-      when: template_name is defined      
+      when: vm_template_name is defined      

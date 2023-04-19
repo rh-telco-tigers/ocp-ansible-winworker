@@ -1,7 +1,7 @@
 FROM fedora:latest
 
 RUN yum check-update; \
-    yum install -y gcc wget krb5-workstation libffi-devel python3-devel python3 krb5-devel python3-pip && \
+    yum install -y gcc openssh-clients wget krb5-workstation libffi-devel python3-devel python3 krb5-devel python3-pip && \
     yum clean all
 
 RUN pip3 install --upgrade pip && \
