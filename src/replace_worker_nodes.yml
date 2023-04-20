@@ -1,0 +1,37 @@
+- name: Create dynamic inventory of Windows nodes
+  hosts: localhost
+  gather_facts: no
+  vars_files:
+    - vars/vars.yml
+  tasks:
+    - name: Get Kubernetes nodes
+      kubernetes.core.k8s_info:
+        kind: Node
+        label_selectors: "kubernetes.io/os=windows"
+      register: my_nodes
+    - name: Add host to inventory
+      add_host:
+        hostname: "{{ item[0].address }}"
+        groups: "winnodes"
+        ansible_host: "{{ item[0].address }}"
+        ansible_user: "{{ windows_user }}"
+        ansible_ssh_private_key_file: "/ansible/private_key.pem"
+        ansible_ssh_extra_args: "-o StrictHostKeyChecking=no"
+        ansible_shell_type: cmd
+        ansible_become_method: runas
+        ansible_remote_tmp: c\temp
+        remote_tmp: c\temp
+      loop: "{{ my_nodes | json_query(query) }}"
+      vars:
+        query: "resources[].status.addresses[?type=='ExternalIP']"
+
+- name: Replace Windows Nodes
+  hosts: localhost
+  gather_facts: False
+  tasks:
+
+    - name: Replace Nodes
+      include_tasks: tasks/replace-nodes.yml
+      loop: "{{ my_nodes | json_query(query) }}"
+      vars:
+        query: "resources[]"

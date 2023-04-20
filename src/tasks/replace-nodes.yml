@@ -1,0 +1,56 @@
+---
+#patch-node.yml
+
+- name: debug
+  debug:
+    msg: Working on node "{{ item | json_query("status.addresses[?type=='Hostname'].address | [0]") | replace('\"','')  }}"
+
+- name: Mark node "{{ item | json_query("status.addresses[?type=='Hostname'].address | [0]") }}" as unschedulable.
+  kubernetes.core.k8s_drain:
+    state: cordon
+    name: "{{ item | json_query(\"status.addresses[?type=='Hostname'].address | [0]\") }}"
+
+- name: Drain node "{{ item | json_query("status.addresses[?type=='Hostname'].address | [0]") }}"
+  kubernetes.core.k8s_drain:
+    state: drain
+    name: "{{ item | json_query(\"status.addresses[?type=='Hostname'].address | [0]\") }}"
+    delete_options:
+      force: yes
+
+# Get the machineSet that applies to the machine we just deleted, and then loop until
+# status.replicas == status.availableReplicas
+- name: Get Machine reference
+  kubernetes.core.k8s_info:
+    kind: Machine
+    api_version: "machine.openshift.io/v1beta1"
+    namespace: openshift-machine-api
+    name: "{{ item | json_query(\"status.addresses[?type=='Hostname'].address | [0]\") }}"
+  register: my_machine
+
+- name: debug my_machine
+  debug:
+    #msg: The name should be here "{{ my_machine | json_query("metadata") }}"
+    msg: "{{ my_machine.resources[0] | json_query('metadata.ownerReferences[0].name') }}"
+
+- name: Delete machine "{{ item | json_query("status.addresses[?type=='Hostname'].address | [0]") }}"
+  kubernetes.core.k8s:
+    state: absent
+    api_version: "machine.openshift.io/v1beta1"
+    kind: Machine
+    namespace: openshift-machine-api
+    name: "{{ item | json_query(\"status.addresses[?type=='Hostname'].address | [0]\") }}"
+
+- name: Get MachineSet
+  kubernetes.core.k8s_info:
+    kind: MachineSet
+    api_version: machine.openshift.io/v1beta1
+    name: "{{ my_machine.resources[0] | json_query('metadata.ownerReferences[0].name') }}"
+    namespace: openshift-machine-api
+  register: my_machine_set
+  until:  my_machine_set.resources[0] | json_query('status.availableReplicas') == my_machine_set.resources[0] | json_query('status.replicas')
+  retries: 15
+  delay: 90
+
+- name: debug my_machine_set
+  debug:
+    msg: "{{ my_machine_set.resources[0] | json_query('status') }}"
