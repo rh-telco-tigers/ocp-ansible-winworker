@@ -25,7 +25,7 @@
       vars:
         query: "resources[].status.addresses[?type=='ExternalIP']"
 
-- name: Manipulate Windows Nodes
+- name: Update Windows Nodes
   hosts: localhost
   gather_facts: False
   tasks:

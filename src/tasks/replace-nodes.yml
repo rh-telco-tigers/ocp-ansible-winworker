@@ -1,9 +1,5 @@
 ---
-#patch-node.yml
-
-- name: debug
-  debug:
-    msg: Working on node "{{ item | json_query("status.addresses[?type=='Hostname'].address | [0]") | replace('\"','')  }}"
+#replace-node.yml
 
 - name: Mark node "{{ item | json_query("status.addresses[?type=='Hostname'].address | [0]") }}" as unschedulable.
   kubernetes.core.k8s_drain:
@@ -16,6 +12,8 @@
     name: "{{ item | json_query(\"status.addresses[?type=='Hostname'].address | [0]\") }}"
     delete_options:
       force: yes
+      terminate_grace_period: 60
+      wait_timeout: 60
 
 # Get the machineSet that applies to the machine we just deleted, and then loop until
 # status.replicas == status.availableReplicas
@@ -26,11 +24,6 @@
     namespace: openshift-machine-api
     name: "{{ item | json_query(\"status.addresses[?type=='Hostname'].address | [0]\") }}"
   register: my_machine
-
-- name: debug my_machine
-  debug:
-    #msg: The name should be here "{{ my_machine | json_query("metadata") }}"
-    msg: "{{ my_machine.resources[0] | json_query('metadata.ownerReferences[0].name') }}"
 
 - name: Delete machine "{{ item | json_query("status.addresses[?type=='Hostname'].address | [0]") }}"
   kubernetes.core.k8s:
@@ -50,7 +43,3 @@
   until:  my_machine_set.resources[0] | json_query('status.availableReplicas') == my_machine_set.resources[0] | json_query('status.replicas')
   retries: 15
   delay: 90
-
-- name: debug my_machine_set
-  debug:
-    msg: "{{ my_machine_set.resources[0] | json_query('status') }}"

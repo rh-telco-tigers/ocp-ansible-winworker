@@ -50,7 +50,7 @@
         validate_certs: no
         name: "{{ vm_template_name }}"
     
-    - name: Add the host to upgrade
+    - name: Add the host to update
       add_host:
         name: "{{ vm_facts.instance.hw_name }}"
         ansible_host: "{{ vm_facts.instance.ipv4 }}"
